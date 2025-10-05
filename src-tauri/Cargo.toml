@@ -1,0 +1,24 @@
+[package]
+name = "swapstore"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tauri = { version = "1.0", features = [ "shell-open", "window-unminimize", "window-start-dragging", "window-show", "window-maximize", "window-minimize", "window-unmaximize", "window-hide", "window-close"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+uuid = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+tauri-plugin-opener = "1.0"  # Add this line
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+[[bin]]
+name = "swapstore"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "1", features = [] }
