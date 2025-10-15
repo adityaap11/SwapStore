@@ -1,4 +1,4 @@
-// src/App.jsx
+
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
 import MemoryVisualizer from './components/MemoryVisualizer';
@@ -6,6 +6,8 @@ import KVOperations from './components/KVOperations';
 import SwapAnimator from './components/SwapAnimator';
 import AlgorithmComparison from './components/AlgorithmComparison';
 import PerformanceMetrics from './components/PerformanceMetrics';
+import ProcessTracker from './components/ProcessTracker';
+import ProcessControls from './components/ProcessControls';
 import './App.css';
 
 function App() {
@@ -67,6 +69,11 @@ function App() {
         setMemoryStatus(newStatus);
         console.log('Memory status updated:', newStatus);
     };
+
+    // Handle process updates for real-time refresh
+    const handleProcessUpdate = () => {
+        setRefreshTrigger(prev => prev + 1);
+    };
     
     // Initial load
     useEffect(() => {
@@ -76,6 +83,7 @@ function App() {
     const tabs = [
         { id: 'operations', label: '🔧 Operations', icon: '🔧' },
         { id: 'visualization', label: '📊 Memory View', icon: '📊' },
+        { id: 'processes', label: '⚙️ Process Tracker', icon: '⚙️' },
         { id: 'animation', label: '🎬 Swap Animation', icon: '🎬' },
         { id: 'comparison', label: '⚖️ Algorithm Comparison', icon: '⚖️' },
         { id: 'metrics', label: '📈 Performance Analytics', icon: '📈' }
@@ -107,6 +115,15 @@ function App() {
                             refreshTrigger={refreshTrigger}
                             onMemoryStatus={handleMemoryStatusUpdate}
                         />
+                    </div>
+                );
+            case 'processes':
+                return (
+                    <div className="tab-content">
+                        <div className="space-y-6 p-6">
+                            <ProcessControls onProcessUpdate={handleProcessUpdate} />
+                            <ProcessTracker />
+                        </div>
                     </div>
                 );
             case 'animation':
@@ -159,6 +176,10 @@ function App() {
                             <span className="badge-label">Operations:</span>
                             <span className="badge-value">{memoryStatus.total_operations}</span>
                         </div>
+                        <div className="info-badge">
+                            <span className="badge-label">Hit Rate:</span>
+                            <span className="badge-value">{memoryStatus.hit_rate?.toFixed(1) || 0}%</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -197,6 +218,9 @@ function App() {
                         </a>
                         <a href="#" onClick={(e) => { e.preventDefault(); setActiveTab('animation'); }}>
                             Watch Animations
+                        </a>
+                        <a href="#" onClick={(e) => { e.preventDefault(); setActiveTab('processes'); }}>
+                            Process Tracker
                         </a>
                     </div>
                 </div>

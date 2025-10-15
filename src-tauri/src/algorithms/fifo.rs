@@ -1,4 +1,3 @@
-// src-tauri/src/algorithms/fifo.rs
 use super::PageReplacer;
 use std::collections::VecDeque;
 
@@ -16,7 +15,6 @@ impl FifoReplacer {
 
 impl PageReplacer for FifoReplacer {
     fn record_access(&mut self, page_id: u64) {
-        // Only add if not already in queue (avoid duplicates)
         if !self.queue.contains(&page_id) {
             self.queue.push_back(page_id);
         }
