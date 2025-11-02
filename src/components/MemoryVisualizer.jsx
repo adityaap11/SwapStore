@@ -1,169 +1,132 @@
-// src/components/MemoryVisualizer.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
-import './MemoryVisualizer.css';
 
-const MemoryVisualizer = ({ refreshTrigger, compact = false, onMemoryStatus }) => {
-    const [memoryStatus, setMemoryStatus] = useState({
-        total_operations: 0,
-        page_faults: 0,
-        hit_rate: 0,
-        primary_used: 0,
-        secondary_used: 0,
-        primary_capacity: 5,
-        primary_pages: [],
-        secondary_pages: []
-    });
-    const [loading, setLoading] = useState(false);
+// Helper to format bytes for human readability
+const formatBytes = (bytes) => {
+  if (bytes === 0) return '0 B';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+};
 
-    const fetchMemoryStatus = async () => {
-        setLoading(true);
-        try {
-            const status = await invoke('get_memory_status');
-            
-            // Calculate hit rate if not provided by backend
-            if (!status.hit_rate && status.total_operations > 0) {
-                status.hit_rate = ((status.total_operations - status.page_faults) / status.total_operations) * 100;
-            }
-            
-            setMemoryStatus(status);
-            
-            // Pass updated status to parent component
-            if (onMemoryStatus) {
-                onMemoryStatus(status);
-            }
-            
-            console.log('Memory status fetched:', status);
-        } catch (error) {
-            console.error('Failed to fetch memory status:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+const getPercentage = (used, total) => {
+  const usedNum = typeof used === 'string' ? parseFloat(used) : used;
+  const totalNum = typeof total === 'string' ? parseFloat(total) : total;
+  if (isNaN(usedNum) || isNaN(totalNum) || totalNum === 0) return 0;
+  return ((usedNum / totalNum) * 100).toFixed(2);
+};
 
-    useEffect(() => {
-        fetchMemoryStatus();
-    }, [refreshTrigger]);
+const MemoryVisualizer = ({ refreshTrigger, compact, onMemoryStatus }) => {
+  const [status, setStatus] = useState(null);
 
-    const renderMemoryBlock = (page, index, type) => {
-        if (!page) {
-            return (
-                <div key={index} className={`memory-block empty ${type}`}>
-                    <div className="block-content">
-                        <div className="block-id">Empty</div>
-                    </div>
-                </div>
-            );
-        }
+  useEffect(() => {
+    fetchStatus();
+    // eslint-disable-next-line
+  }, [refreshTrigger]);
 
-        return (
-            <div key={page.id || index} className={`memory-block occupied ${type}`}>
-                <div className="block-content">
-                    <div className="block-id">Page {page.id}</div>
-                    <div className="block-key">{page.key}</div>
-                    <div className="block-size">{page.size || 28}B</div>
-                    <div className="block-access">#{page.access_count || 1}</div>
-                </div>
-            </div>
-        );
-    };
-
-    const renderStats = () => (
-        <div className="memory-stats">
-            <div className="stat-item">
-                <span className="stat-label">Page Faults:</span>
-                <span className="stat-value">{memoryStatus.page_faults}</span>
-            </div>
-            <div className="stat-item">
-                <span className="stat-label">Total Operations:</span>
-                <span className="stat-value">{memoryStatus.total_operations}</span>
-            </div>
-            <div className="stat-item">
-                <span className="stat-label">Hit Rate:</span>
-                <span className="stat-value">{memoryStatus.hit_rate?.toFixed(1) || 0}%</span>
-            </div>
-            <div className="stat-item">
-                <span className="stat-label">Memory Utilization:</span>
-                <span className="stat-value">
-                    {memoryStatus.primary_capacity ? 
-                        Math.round((memoryStatus.primary_used / memoryStatus.primary_capacity) * 100) : 0}%
-                </span>
-            </div>
-        </div>
-    );
-
-    if (compact) {
-        return (
-            <div className="memory-visualizer compact">
-                <div className="visualizer-header">
-                    <h3>Quick Memory View</h3>
-                    {loading && <div className="loading-indicator">Updating...</div>}
-                </div>
-                
-                <div className="memory-section">
-                    <h4>Primary Memory ({memoryStatus.primary_used}/{memoryStatus.primary_capacity})</h4>
-                    <div className="memory-grid compact-grid">
-                        {Array(memoryStatus.primary_capacity).fill(null).map((_, index) => {
-                            const page = memoryStatus.primary_pages[index];
-                            return renderMemoryBlock(page, index, 'primary');
-                        })}
-                    </div>
-                </div>
-                
-                {memoryStatus.secondary_pages.length > 0 && (
-                    <div className="memory-section">
-                        <h4>Secondary Storage ({memoryStatus.secondary_used})</h4>
-                        <div className="memory-grid compact-grid">
-                            {memoryStatus.secondary_pages.slice(0, 3).map((page, index) => 
-                                renderMemoryBlock(page, index, 'secondary')
-                            )}
-                            {memoryStatus.secondary_pages.length > 3 && (
-                                <div className="more-indicator">
-                                    +{memoryStatus.secondary_pages.length - 3} more
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-                
-                {renderStats()}
-            </div>
-        );
+  const fetchStatus = async () => {
+    try {
+      const stat = await invoke('get_memory_status');
+      setStatus(stat);
+      if (onMemoryStatus) onMemoryStatus(stat);
+    } catch {
+      setStatus(null);
     }
+  };
 
+  if (!status) {
     return (
-        <div className="memory-visualizer">
-            <div className="visualizer-header">
-                <h2>Memory Visualization</h2>
-                {loading && <div className="loading-indicator">Updating...</div>}
-            </div>
-
-            <div className="memory-section">
-                <h3>Primary Memory ({memoryStatus.primary_used}/{memoryStatus.primary_capacity})</h3>
-                <div className="memory-grid">
-                    {Array(memoryStatus.primary_capacity).fill(null).map((_, index) => {
-                        const page = memoryStatus.primary_pages[index];
-                        return renderMemoryBlock(page, index, 'primary');
-                    })}
-                </div>
-            </div>
-
-            <div className="memory-section">
-                <h3>Secondary Storage ({memoryStatus.secondary_used})</h3>
-                <div className="memory-grid">
-                    {memoryStatus.secondary_pages.length > 0 ? (
-                        memoryStatus.secondary_pages.map((page, index) => 
-                            renderMemoryBlock(page, index, 'secondary')
-                        )
-                    ) : (
-                        <div className="empty-secondary">No pages in secondary storage</div>
-                    )}
-                </div>
-            </div>
-
-            {renderStats()}
+      <div className="memory-visualizer">
+        <div className="text-center py-8 text-gray-500">
+          Loading memory status...
         </div>
+      </div>
     );
+  }
+
+  // Memory status object expected to contain these fields from backend
+  // - primary_capacity, primary_used, secondary_used, secondary_capacity, swap_total, swap_used
+  const primaryTotal = status.primary_capacity_bytes || status.primary_capacity || (status.primary_pages?.length * (status.page_size_bytes || 4096));
+  const primaryUsed = status.primary_used_bytes || status.primary_used || (status.primary_pages?.reduce((sum, p) => sum + (p.size || 0), 0) || 0);
+  const primaryAvailable = Math.max(0, primaryTotal - primaryUsed);
+
+  const secondaryTotal = status.secondary_capacity_bytes || status.secondary_capacity || status.secondary_total || 1024 * 1024 * 1024; // fallback 1GB
+  const secondaryUsed = status.secondary_used_bytes || status.secondary_used || (status.secondary_pages?.reduce((sum, p) => sum + (p.size || 0), 0) || 0);
+  const secondaryAvailable = Math.max(0, secondaryTotal - secondaryUsed);
+
+  const swapTotal = status.swap_total_bytes || status.swap_total || status.swap_capacity || 512 * 1024 * 1024; // fallback 512MB
+  const swapUsed = status.swap_used_bytes || status.swap_used || 0;
+  const swapAvailable = Math.max(0, swapTotal - swapUsed);
+
+  return (
+    <div className="memory-visualizer" style={{ width: '100%', maxWidth: 900, margin: '0 auto', background: '#fff', borderRadius: 12, boxShadow: '0 1px 8px rgba(0,0,0,0.04)', padding: '2rem' }}>
+      <h2 style={{ fontWeight: 700, fontSize: 22, marginBottom: 24 }}>Current Memory Status</h2>
+
+      <div style={{display: 'flex', gap: '2.5rem', flexWrap: 'wrap', justifyContent: 'space-between'}}>
+        {/* Primary Memory Card */}
+        <div style={{flex: 1, minWidth: 250, background: '#f7fcfd', borderRadius: 10, border: '1px solid #dceaf5', padding: 24, marginBottom: 12}}>
+          <h4 style={{fontWeight: 700, fontSize: 20, marginBottom: 10}}>Primary Memory</h4>
+          <div style={{marginBottom: 6, display:'flex', justifyContent: 'space-between'}}>
+            <span>Used:</span>
+            <span style={{fontWeight: 600}}>{formatBytes(primaryUsed)}</span>
+          </div>
+          <div style={{marginBottom: 6, display:'flex', justifyContent: 'space-between'}}>
+            <span>Available:</span>
+            <span style={{fontWeight: 600, color: '#059669'}}>{formatBytes(primaryAvailable)}</span>
+          </div>
+          <div style={{marginBottom: 6, display:'flex', justifyContent: 'space-between'}}>
+            <span>Total Capacity:</span>
+            <span>{formatBytes(primaryTotal)}</span>
+          </div>
+          <div style={{marginBottom: 0, display:'flex', justifyContent: 'space-between'}}>
+            <span>Utilization:</span>
+            <span>{getPercentage(primaryUsed, primaryTotal)}%</span>
+          </div>
+        </div>
+        {/* Secondary Memory Card */}
+        <div style={{flex: 1, minWidth: 250, background: '#f7fcfd', borderRadius: 10, border: '1px solid #dceaf5', padding: 24, marginBottom: 12}}>
+          <h4 style={{fontWeight: 700, fontSize: 20, marginBottom: 10}}>Secondary Memory</h4>
+          <div style={{marginBottom: 6, display:'flex', justifyContent: 'space-between'}}>
+            <span>Used:</span>
+            <span style={{fontWeight: 600}}>{formatBytes(secondaryUsed)}</span>
+          </div>
+          <div style={{marginBottom: 6, display:'flex', justifyContent: 'space-between'}}>
+            <span>Available:</span>
+            <span style={{fontWeight: 600, color: '#059669'}}>{formatBytes(secondaryAvailable)}</span>
+          </div>
+          <div style={{marginBottom: 6, display:'flex', justifyContent: 'space-between'}}>
+            <span>Total Capacity:</span>
+            <span>{formatBytes(secondaryTotal)}</span>
+          </div>
+          <div style={{marginBottom: 0, display:'flex', justifyContent: 'space-between'}}>
+            <span>Utilization:</span>
+            <span>{getPercentage(secondaryUsed, secondaryTotal)}%</span>
+          </div>
+        </div>
+        {/* Swap Space Card */}
+        <div style={{flex: 1, minWidth: 250, background: '#f7fcfd', borderRadius: 10, border: '1px solid #dceaf5', padding: 24, marginBottom: 12}}>
+          <h4 style={{fontWeight: 700, fontSize: 20, marginBottom: 10}}>Swap Space</h4>
+          <div style={{marginBottom: 6, display:'flex', justifyContent: 'space-between'}}>
+            <span>Allocated:</span>
+            <span>{formatBytes(swapTotal)}</span>
+          </div>
+          <div style={{marginBottom: 6, display:'flex', justifyContent: 'space-between'}}>
+            <span>Used:</span>
+            <span style={{fontWeight: 600}}>{formatBytes(swapUsed)}</span>
+          </div>
+          <div style={{marginBottom: 6, display:'flex', justifyContent: 'space-between'}}>
+            <span>Available:</span>
+            <span style={{fontWeight: 600, color: '#059669'}}>{formatBytes(swapAvailable)}</span>
+          </div>
+          <div style={{marginBottom: 0, display:'flex', justifyContent: 'space-between'}}>
+            <span>Utilization:</span>
+            <span>{getPercentage(swapUsed, swapTotal)}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default MemoryVisualizer;

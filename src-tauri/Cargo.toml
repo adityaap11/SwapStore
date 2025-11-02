@@ -1,19 +1,17 @@
 [package]
 name = "swapstore"
-version = "0.1.0"
+version = "0.2.0"
 description = "Understanding swap space management with memory visualization and performance analyzer and metrics."
 authors = ["you"]
 license = ""
 repository = ""
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [build-dependencies]
 tauri-build = { version = "1.5", features = [] }
 
 [dependencies]
-tauri = { version = "1.5", features = [ "window-maximize", "shell-open", "window-unminimize", "window-start-dragging", "window-close", "window-unmaximize", "window-minimize", "window-hide", "window-show", "icon-ico", "icon-png"] }
+tauri = { version = "1.5", features = [ "process-all", "shell-all", "path-all", "dialog-all", "fs-all", "icon-ico", "icon-png"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 rand = "0.8"
