@@ -1,14 +1,193 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri + React</title>
-  </head>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwapStore - Swap Space Management Simulation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <header class="header">
+            <div class="logo">
+                <h1>SwapStore</h1>
+                <p>Swap Space Management Simulation & Visualization</p>
+            </div>
+            <div class="team-info">
+                <span>Team: SwapStore OS-V-T150</span>
+            </div>
+        </header>
 
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+        <!-- Configuration Panel -->
+        <section class="config-panel">
+            <h2>Configuration</h2>
+            <div class="config-grid">
+                <div class="config-item">
+                    <label for="ramSize">RAM Size (KB):</label>
+                    <input type="number" id="ramSize" value="16384" min="1024" max="65536" step="1024">
+                    <span class="info-text">Total frames: <span id="frameCount">0</span></span>
+                </div>
+
+                <div class="config-item">
+                    <label for="pageSize">Page Size (Bytes):</label>
+                    <input type="number" id="pageSize" value="4096" readonly>
+                </div>
+
+                <div class="config-item">
+                    <label for="algorithm">Page Replacement Algorithm:</label>
+                    <select id="algorithm">
+                        <option value="fifo">FIFO (First In First Out)</option>
+                        <option value="lru">LRU (Least Recently Used)</option>
+                        <option value="optimal">Optimal</option>
+                    </select>
+                </div>
+
+                <div class="config-item full-width">
+                    <label for="fileInput">Upload File for Simulation:</label>
+                    <input type="file" id="fileInput" multiple>
+                    <button id="initButton" class="btn btn-primary">Initialize Simulation</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- File List Section -->
+        <section class="file-section">
+            <h2>Loaded Files</h2>
+            <div id="fileList" class="file-list">
+                <p class="empty-state">No files loaded. Upload files to begin simulation.</p>
+            </div>
+        </section>
+
+        <!-- Control Panel -->
+        <section class="control-panel">
+            <h2>Simulation Controls</h2>
+            <div class="control-buttons">
+                <button id="startButton" class="btn btn-success" disabled>Start Simulation</button>
+                <button id="stepButton" class="btn btn-info" disabled>Step Forward</button>
+                <button id="pauseButton" class="btn btn-warning" disabled>Pause</button>
+                <button id="resetButton" class="btn btn-danger">Reset</button>
+            </div>
+            <div class="speed-control">
+                <label for="speedSlider">Animation Speed:</label>
+                <input type="range" id="speedSlider" min="100" max="2000" value="1000" step="100">
+                <span id="speedValue">1000ms</span>
+            </div>
+        </section>
+
+        <!-- Visualization Section -->
+        <section class="visualization-section">
+            <div class="viz-container">
+                <!-- Primary Memory (RAM) -->
+                <div class="memory-block">
+                    <h3>Primary Memory (RAM)</h3>
+                    <div id="ramVisualization" class="memory-grid">
+                        <!-- Dynamically filled -->
+                    </div>
+                    <div class="memory-stats">
+                        <div class="stat">
+                            <span class="stat-label">Used:</span>
+                            <span id="ramUsed" class="stat-value">0 KB</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Free:</span>
+                            <span id="ramFree" class="stat-value">0 KB</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Swap Space (Secondary Storage) -->
+                <div class="memory-block">
+                    <h3>Swap Space (Secondary Storage)</h3>
+                    <div id="swapVisualization" class="memory-grid">
+                        <!-- Dynamically filled -->
+                    </div>
+                    <div class="memory-stats">
+                        <div class="stat">
+                            <span class="stat-label">Swapped Pages:</span>
+                            <span id="swapUsed" class="stat-value">0</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Total Capacity:</span>
+                            <span id="swapTotal" class="stat-value">0 KB</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Statistics Section -->
+        <section class="statistics-section">
+            <h2>Performance Metrics</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-content">
+                        <h4>Page Faults</h4>
+                        <p id="pageFaults" class="stat-number">0</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-content">
+                        <h4>Page Hits</h4>
+                        <p id="pageHits" class="stat-number">0</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">📤</div>
+                    <div class="stat-content">
+                        <h4>Swap Outs</h4>
+                        <p id="swapOuts" class="stat-number">0</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">📥</div>
+                    <div class="stat-content">
+                        <h4>Swap Ins</h4>
+                        <p id="swapIns" class="stat-number">0</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">🎯</div>
+                    <div class="stat-content">
+                        <h4>Hit Rate</h4>
+                        <p id="hitRate" class="stat-number">0%</p>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">⚡</div>
+                    <div class="stat-content">
+                        <h4>Total Accesses</h4>
+                        <p id="totalAccesses" class="stat-number">0</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Activity Log -->
+        <section class="log-section">
+            <h2>Activity Log</h2>
+            <div id="activityLog" class="activity-log">
+                <p class="log-entry">System initialized. Ready for simulation.</p>
+            </div>
+        </section>
+
+        <!-- Algorithm Comparison -->
+        <section class="comparison-section">
+            <h2>Algorithm Comparison</h2>
+            <button id="compareButton" class="btn btn-secondary">Compare All Algorithms</button>
+            <div id="comparisonResults" class="comparison-results">
+                <!-- Dynamically filled -->
+            </div>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+</body>
 </html>
